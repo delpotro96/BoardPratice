@@ -285,12 +285,12 @@ import java.time.LocalDateTime;
 @ToString
 @NoArgsConstructor
 public class BoardDto {
-    private Long id;
-    private String author;
-    private String title;
-    private String content;
-    private LocalDateTime createdDate;
-    private LocalDateTime modifiedDate;
+    private final Long id;
+    private final String author;
+    private final String title;
+    private final String content;
+    private final LocalDateTime createdDate;
+    private final LocalDateTime modifiedDate;
 
     public Board toEntity() {
         Board build = Board.builder()
@@ -327,7 +327,7 @@ import javax.transaction.Transactional;
 
 @Service
 public class BoardService {
-    private BoardRepository boardRepository;
+    private final BoardRepository boardRepository;
 
     public BoardService(BoardRepository boardRepository){
         this.boardRepository=boardRepository;
@@ -355,23 +355,25 @@ import org.springframework.web.bind.annotation.PostMapping;
 @Controller
 public class BoardController {
 
-    private BoardService boardService;
-    public BoardController(BoardService boardService){
-        this.boardService=boardService;
+  private final BoardService boardService;
+
+  public BoardController(BoardService boardService) {
+    this.boardService = boardService;
+  }
+
+  @GetMapping("/")
+  public String list() {
+    return "board/list.html";
+  }
+
+  @GetMapping("/post")
+  public String post() {
+    return "board/post.html";
     }
 
-    @GetMapping("/")
-    public String list(){
-        return "board/list.html";
-    }
-
-    @GetMapping("/post")
-    public String post(){
-        return "board/post.html";
-    }
-    @PostMapping("/post")
-    public String write(BoardDto boardDto){
-        boardService.savePost(boardDto);
+  @PostMapping("/post")
+  public String write(BoardDto boardDto) {
+    boardService.savePost(boardDto);
         return "redirect:/";
     }
 }
@@ -415,5 +417,75 @@ public class BoardController {
     }
 ```
 
-​	
+​
+
+## 게시글 조회 구현하기
+
+### templete/detail.html
+
+```java
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="@{'게시판 - ' + ${post.title}}"></title>
+    <link rel='stylesheet' href='/webjars/bootstrap/4.5.0/css/bootstrap.min.css'>
+</head>
+<body>
+<header th:insert="common/header.html"></header>
+<div class="container">
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title" th:text="@{${post.title} + ' - ' + ${post.author}}"></h5>
+            <p class="card-text"><small class="text-muted" th:text="${#temporals.format(post.createdDate, 'yyyy-MM-dd HH:mm')}"></small></p>
+            <p class="card-text" th:text="${post.content}"></p>
+        </div>
+    </div>
+    <div class="row mt-3">
+        <div class="col-auto mr-auto"></div>
+        <div class="col-auto">
+            <a class="btn btn-info" th:href="@{'/post/edit/' + ${post.id}}" role="button">수정</a>
+        </div>
+        <div class="col-auto">
+            <form id="delete-form" th:action="@{'/post/' + ${post.id}}" method="post">
+                <input type="hidden" name="_method" value="delete"/>
+                <button id="delete-btn" type="submit" class="btn btn-danger">삭제</button>
+            </form>
+        </div>
+    </div>
+</div>
+<script src="/webjars/jquery/3.5.1/jquery.min.js"></script>
+<script src="/webjars/bootstrap/4.5.0/js/bootstrap.min.js"></script>
+</body>
+</html>
+```
+
+### Service 수정하기
+
+```java
+@Transactional
+    public BoardDto getPost(Long id) {
+        Board board = boardRepository.findById(id).get();
+
+        BoardDto boardDto = BoardDto.builder()
+                .id(board.getId())
+                .author(board.getAuthor())
+                .title(board.getTitle())
+                .content(board.getContent())
+                .createdDate(board.getCreatedDate())
+                .build();
+        return boardDto;
+    }
+```
+
+### Controller 수정하기
+
+```java
+@GetMapping("/post/{id}")
+    public String detail(@PathVariable("id") Long id, Model model) {
+        BoardDto boardDto = boardService.getPost(id);
+        model.addAttribute("post", boardDto);
+        return "board/detail.html";
+    }
+```
 
